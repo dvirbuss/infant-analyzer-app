@@ -8,7 +8,7 @@ def normalize_coordinates(x, y, frame_width, frame_height):
     return round((x / frame_width) * 100, 2), round((y / frame_height) * 100, 2)
 
 def extract_keypoints_xy(keypoints_object):
-    if keypoints_object is None:
+    if keypoints_object is None or len(keypoints_object.xy) == 0:
         return [[0, 0]] * len(config.CATEGORIES)
     return keypoints_object.xy.cpu().numpy()[0]
 

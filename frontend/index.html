@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infant Analyzer</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Rounded" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css?v=2">
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- Header -->
+        <header class="app-header">
+            <button class="icon-btn"><span class="material-icons-rounded">menu</span></button>
+            <h1 class="app-title">Infant Analyzer</h1>
+            <button class="icon-btn"><span class="material-icons-rounded">notifications</span></button>
+        </header>
+
+        <!-- Main Content -->
+        <main class="app-main">
+
+            <section class="patient-section">
+                <div class="section-title-wrap">
+                    <h2 class="section-title">Infant Details</h2>
+                </div>
+
+                <div class="card date-card">
+                    <div class="date-input-wrap">
+                        <label for="birth-date">Select Date of Birth</label>
+                        <input type="date" id="birth-date" />
+                    </div>
+                </div>
+            </section>
+
+            <section class="videos-section">
+                <div class="section-title-wrap toggle-wrap">
+                    <h2 class="section-title">Evaluation Videos</h2>
+                    <span class="badge">3 Required</span>
+                </div>
+
+                <div class="grid-container">
+                    <!-- Prone Card -->
+                    <div class="card video-card" id="card-prone">
+                        <div class="card-icon purple"><img src="/assets/infant_prone.png" alt="Prone" /></div>
+                        <h3 class="card-name">Prone</h3>
+                        <div class="upload-area" onclick="document.getElementById('file-prone').click()">
+                            <span class="material-icons-rounded upload-icon">cloud_upload</span>
+                            <p>Upload Video</p>
+                        </div>
+                        <input type="file" id="file-prone" accept="video/mp4,video/quicktime" hidden
+                            onchange="handleFileSelect(event, 'prone')" />
+                        <div class="preview-area" id="preview-prone" style="display: none;">
+                            <video id="vid-prone" controls></video>
+                            <button class="clear-btn" onclick="clearFile('prone')"><span
+                                    class="material-icons-rounded">close</span></button>
+                        </div>
+                    </div>
+
+                    <!-- Supine Card -->
+                    <div class="card video-card" id="card-supine">
+                        <div class="card-icon pink"><img src="/assets/infant_supine.png" alt="Supine" /></div>
+                        <h3 class="card-name">Supine</h3>
+                        <div class="upload-area" onclick="document.getElementById('file-supine').click()">
+                            <span class="material-icons-rounded upload-icon">cloud_upload</span>
+                            <p>Upload Video</p>
+                        </div>
+                        <input type="file" id="file-supine" accept="video/mp4,video/quicktime" hidden
+                            onchange="handleFileSelect(event, 'supine')" />
+                        <div class="preview-area" id="preview-supine" style="display: none;">
+                            <video id="vid-supine" controls></video>
+                            <button class="clear-btn" onclick="clearFile('supine')"><span
+                                    class="material-icons-rounded">close</span></button>
+                        </div>
+                    </div>
+
+                    <!-- Sitting Card -->
+                    <div class="card video-card" id="card-sitting">
+                        <div class="card-icon orange"><img src="/assets/infant_sitting.png" alt="Sitting" /></div>
+                        <h3 class="card-name">Sitting</h3>
+                        <div class="upload-area" onclick="document.getElementById('file-sitting').click()">
+                            <span class="material-icons-rounded upload-icon">cloud_upload</span>
+                            <p>Upload Video</p>
+                        </div>
+                        <input type="file" id="file-sitting" accept="video/mp4,video/quicktime" hidden
+                            onchange="handleFileSelect(event, 'sitting')" />
+                        <div class="preview-area" id="preview-sitting" style="display: none;">
+                            <video id="vid-sitting" controls></video>
+                            <button class="clear-btn" onclick="clearFile('sitting')"><span
+                                    class="material-icons-rounded">close</span></button>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <div class="submit-wrap">
+                <button id="generate-btn" class="primary-btn" disabled onclick="generateReport()">GENERATE</button>
+            </div>
+
+            <!-- Result Section (hidden initially) -->
+            <section id="results-section" style="display: none;">
+                <div class="section-title-wrap">
+                    <h2 class="section-title">Results Dashboard</h2>
+                </div>
+
+                <div class="card score-card">
+                    <h3>AIMS Total Score</h3>
+                    <div class="score-circle" id="aims-score-text">--</div>
+                </div>
+
+                <div class="reports-grid">
+                    <div class="card report-card">
+                        <h3>Expert Report</h3>
+                        <img id="expert-img" src="" alt="Expert Report" />
+                    </div>
+                    <div class="card report-card">
+                        <h3>Parent Report</h3>
+                        <img id="parent-img" src="" alt="Parent Report" />
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="overlay" style="display: none;">
+            <h2 style="margin-bottom: 30px; color: var(--text-main);">Analyzing Video Streams...</h2>
+            <div class="progress-container">
+                <!-- Prone Progress -->
+                <div class="progress-step" id="step-Prone">
+                    <div class="circular-progress" id="circle-Prone">
+                        <div class="value-container" id="val-Prone">0%</div>
+                    </div>
+                    <div class="step-label">Prone 1/3</div>
+                    <div class="linear-progress-wrapper">
+                        <div class="linear-progress" id="linear-Prone"></div>
+                    </div>
+                </div>
+                
+                <div class="progress-arrow"><span class="material-icons-rounded">arrow_forward</span></div>
+                
+                <!-- Supine Progress -->
+                <div class="progress-step inactive" id="step-Supine">
+                    <div class="circular-progress" id="circle-Supine">
+                        <div class="value-container" id="val-Supine">0%</div>
+                    </div>
+                    <div class="step-label">Supine 2/3</div>
+                    <div class="linear-progress-wrapper">
+                        <div class="linear-progress" id="linear-Supine"></div>
+                    </div>
+                </div>
+                
+                <div class="progress-arrow"><span class="material-icons-rounded">arrow_forward</span></div>
+                
+                <!-- Sitting Progress -->
+                <div class="progress-step inactive" id="step-Sitting">
+                    <div class="circular-progress" id="circle-Sitting">
+                        <div class="value-container" id="val-Sitting">0%</div>
+                    </div>
+                    <div class="step-label">Sitting 3/3</div>
+                    <div class="linear-progress-wrapper">
+                        <div class="linear-progress" id="linear-Sitting"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="app.js?v=2"></script>
+</body>
+
+</html>

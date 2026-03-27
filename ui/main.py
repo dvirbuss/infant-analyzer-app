@@ -16,12 +16,12 @@ def render_app():
     st.markdown(base_css(), unsafe_allow_html=True)
 
     st.markdown("<div class='app-title'>Infant Motor Development Analyzer</div>", unsafe_allow_html=True)
-    st.markdown("<div class='app-subtitle'>Choose infant birthday and load pose videos</div>", unsafe_allow_html=True)
+    st.markdown("<div class='app-subtitle'>Choose an infant birthday and load the evaluation videos.</div>", unsafe_allow_html=True)
 
     # --- 1. Birthday (Centered) ---
-    _, center_date, _ = st.columns([5, 2, 5])
+    _, center_date, _ = st.columns([4, 3, 4])
     with center_date:
-        st.markdown("<h4 style='text-align:center;'>Choose Infant Birthday:</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align:center; color:#2c3e50; font-weight:600;'>Select Infant Birthday</h4>", unsafe_allow_html=True)
         birth_date = st.date_input(
             "Infant birthday",
             value=datetime.date.today() - datetime.timedelta(days=60),
@@ -63,25 +63,40 @@ def render_app():
         # Use your existing CSS function
         st.markdown(generate_button_css(any_confirmed), unsafe_allow_html=True)
 
-        if st.button("GENERATE", disabled=not any_confirmed):
+        if st.button("GENERATE", type="primary", disabled=not any_confirmed):
             progress_text = st.empty()
+            progress_text.info("Running unified analysis for selected poses...")
 
-            for pose_key in confirmed_keys:
-                progress_text.info(f"Running analysis for {pose_key}...")
-
-                # Extract data and run the core pipeline
-                try:
-                    run_pipeline(
-                        pose=pose_key.capitalize(),
-                        video_path=st.session_state.get(f"{pose_key}__saved_path"),
-                        birthdate=birth_date,  # from your st.date_input
-                        out_dir=config.VIDEOS_OUTPUT_DIR / f"{pose_key}_{datetime.datetime.now().strftime('%H%M%S')}"
-                    )
-                except Exception as e:
-                    st.error(f"Error in {pose_key}: {e}")
-
-            progress_text.success("All analyses complete!")
-            st.balloons()
+            try:
+                # Prepare dictionary of paths
+                video_paths = {}
+                for pk in confirmed_keys:
+                    video_paths[pk.capitalize()] = st.session_state.get(f"{pk}__saved_path")
+                
+                stamp = datetime.datetime.now().strftime('%d-%m-%y_%H-%M')
+                out_dir = config.VIDEOS_OUTPUT_DIR / f"Exam_{stamp}_streamlit"
+                
+                # Run unified pipeline
+                from core.pipeline import process_full_exam
+                result = process_full_exam(video_paths, birth_date, out_dir, caller="streamlit")
+                
+                progress_text.success(f"Analysis complete! Infant Score: {result['aims_score']}")
+                st.balloons()
+                
+                # Display the combined reports
+                reports = result.get("reports", {})
+                col1, col2 = st.columns(2)
+                with col1:
+                    if "expert_plot" in reports and Path(reports["expert_plot"]).exists():
+                        st.image(reports["expert_plot"], caption="Expert Report", use_column_width=True)
+                with col2:
+                    if "parent_plot" in reports and Path(reports["parent_plot"]).exists():
+                        st.image(reports["parent_plot"], caption="Parent Report", use_column_width=True)
+                        
+            except Exception as e:
+                import traceback
+                st.error(f"Error during analysis: {e}")
+                st.code(traceback.format_exc())
     # --- 4. DEBUG SECTION (See where it's looking) ---
     with st.expander("🛠️ Debug Path Info"):
         st.write(f"**BASE_DIR:** `{config.BASE_DIR}`")

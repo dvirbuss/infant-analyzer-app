@@ -4,14 +4,14 @@ import traceback
 import datetime as dt
 import threading
 from pathlib import Path
-import cv2
-from PIL import Image, ImageTk
+import cv2  # type: ignore
+from PIL import Image, ImageTk  # type: ignore
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from tkcalendar import DateEntry
-from tkinterdnd2 import TkinterDnD, DND_FILES
-import config
-from core.pipeline import run as run_pipeline
+from tkcalendar import DateEntry  # type: ignore
+from tkinterdnd2 import TkinterDnD, DND_FILES  # type: ignore
+import config  # type: ignore
+from core.pipeline import run as run_pipeline  # type: ignore
 
 POSES = ["Prone", "Supine", "Sitting"]
 
@@ -23,6 +23,10 @@ def parse_drop_path(data: str) -> str:
     return p
 
 class InfantAnalyzerGUI:
+    preview_window: tk.Toplevel
+    preview_label: tk.Label
+    _current_preview_img: ImageTk.PhotoImage | None = None
+
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Infant Motor Development Analyzer")
@@ -79,9 +83,6 @@ class InfantAnalyzerGUI:
         if not self.preview_window.winfo_exists():
             return
 
-        import cv2
-        from PIL import Image, ImageTk
-
         # Convert BGR -> RGB
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -93,7 +94,7 @@ class InfantAnalyzerGUI:
         imgtk = ImageTk.PhotoImage(image=img)
 
         # keep reference so it doesn't get garbage-collected
-        self.preview_label.imgtk = imgtk
+        self._current_preview_img = imgtk
         self.preview_label.config(image=imgtk)
 
     # ---------------- UI ----------------
@@ -333,8 +334,10 @@ class InfantAnalyzerGUI:
     def _run_pipeline_thread(self, pose: str, video_path: str, birthdate: dt.date):
         try:
             # unique output folder per run
-            stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-            out_dir = Path(config.VIDEOS_OUTPUT_DIR) / f"run_{pose.lower()}_{stamp}"
+            stamp = dt.datetime.now().strftime("%d-%m-%y_%H-%M")
+            exam_out_dir = Path(config.VIDEOS_OUTPUT_DIR) / f"Exam_{stamp}_gui"
+            video_name = Path(video_path).stem
+            out_dir = exam_out_dir / f"{pose.lower()}_{video_name}_{stamp}_gui"
 
             self.root.after(0, self.show_preview_window)
 

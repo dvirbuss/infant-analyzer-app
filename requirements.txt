@@ -12,3 +12,5 @@ tqdm
 torch==2.5.1
 torchvision==0.20.1
 ultralytics==8.4.14
+tkcalendar
+tkinterdnd2

@@ -29,7 +29,7 @@ def run_streamlit():
         sys.exit(1)
     venv_python = Path(__file__).resolve().parent / ".venv" / "Scripts" / "python.exe"
     python_exec = venv_python if venv_python.exists() else sys.executable
-    cmd = [str(python_exec), "-m", "streamlit", "run", str(app_path), "--server.port", "8503",
+    cmd = [str(python_exec), "-m", "streamlit", "run", str(app_path), "--server.port", "8505",
     "--server.address", "127.0.0.1"]
     print("\n🚀 Launching Streamlit...")
     subprocess.call(cmd, cwd=str(project_root))

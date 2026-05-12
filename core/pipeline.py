@@ -53,7 +53,7 @@ def process_single_video(pose: str, video_path: str, out_dir: Path, frame_callba
     knn_impute_keypoints_tsv(artifacts["keypoints_tsv"])
 
     # 4) scoring
-    scores = score_all(artifacts["keypoints_tsv"], artifacts["angles_tsv"])
+    scores = score_all(artifacts["keypoints_tsv"], artifacts["angles_tsv"], pose)
     
     return scores, artifacts
 

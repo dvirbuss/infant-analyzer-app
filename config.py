@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parents[1] / "infant-analyzer-app-1"
+BASE_DIR = Path(__file__).resolve().parent
 
 # Direct paths to your assets
 ASSETS_DIR = BASE_DIR / "assets"

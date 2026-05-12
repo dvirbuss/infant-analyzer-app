@@ -1,4 +1,4 @@
-streamlit==1.32.0
+streamlit>=1.32.0
 numpy
 pandas
 matplotlib
@@ -9,8 +9,8 @@ imageio
 imageio-ffmpeg
 tqdm
 
-torch==2.5.1
-torchvision==0.20.1
-ultralytics==8.4.14
+torch>=2.5.1
+torchvision>=0.20.1
+ultralytics>=8.4.14
 tkcalendar
 tkinterdnd2

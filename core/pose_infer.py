@@ -30,7 +30,7 @@ def infer_video_with_angles(model, video_path: str, pose: str, out_dir: Path, fr
         ang_writer = csv.writer(anf, delimiter="\t")
 
         kp_writer.writerow(["Frame", "Time"] + [f"{cat}_{axis}" for cat in config.CATEGORIES for axis in ["X","Y"]])
-        ang_writer.writerow(["Frame", "Time", "R_Eye-Ear-Vertical", "R_Wrist-Elbow-Shoulder", "R_Hip-Knee-Ankle"])
+        ang_writer.writerow(["Frame", "Time", "R_Eye-Ear-Vertical", "R_Wrist-Elbow-Shoulder", "R_Hip-Knee-Ankle", "R_Chin_Angle"])
 
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         from tqdm import tqdm  # type: ignore
@@ -74,9 +74,10 @@ def infer_video_with_angles(model, video_path: str, pose: str, out_dir: Path, fr
                 a_neck  = calculate_angle(vertical_sp, r_ear, r_eye)
                 a_elbow = calculate_angle(r_wrist, r_elbow, r_shoulder)
                 a_knee  = calculate_angle(r_hip, r_knee, r_ankle)
+                a_chin  = calculate_angle(r_eye, r_ear, r_shoulder)
     
                 kp_writer.writerow([frame_number, round(t, 3)] + flat)
-                ang_writer.writerow([frame_number, round(t, 3), a_neck, a_elbow, a_knee])
+                ang_writer.writerow([frame_number, round(t, 3), a_neck, a_elbow, a_knee, a_chin])
     
                 annotated = frame.copy()
                 if results and len(results[0].boxes) > 0:
@@ -119,10 +120,13 @@ def infer_video_with_angles(model, video_path: str, pose: str, out_dir: Path, fr
                             draw_angle_arc(annotated, r_shoulder, r_elbow, r_wrist, a_elbow, (255, 255, 255))
                         if r_hip[0] != 0 and r_knee[0] != 0 and r_ankle[0] != 0:
                             draw_angle_arc(annotated, r_hip, r_knee, r_ankle, a_knee, (255, 255, 255))
+                        if r_eye[0] != 0 and r_ear[0] != 0 and r_shoulder[0] != 0:
+                            draw_angle_arc(annotated, r_eye, r_ear, r_shoulder, a_chin, (0, 255, 255), radius=40)
 
                     cv2.putText(annotated, f"Neck:  {a_neck:.1f} deg", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (200, 200, 200), 2)
                     cv2.putText(annotated, f"Elbow: {a_elbow:.1f} deg", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (200, 200, 200), 2)
                     cv2.putText(annotated, f"Knee:  {a_knee:.1f} deg", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (200, 200, 200), 2)
+                    cv2.putText(annotated, f"Chin:  {a_chin:.1f} deg", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
 
                 elif pose.lower() == "supine":
                     if results and results[0].keypoints is not None:
@@ -142,9 +146,12 @@ def infer_video_with_angles(model, video_path: str, pose: str, out_dir: Path, fr
                             draw_angle_arc(annotated, r_shoulder, r_elbow, r_wrist, a_elbow, (255, 255, 255))
                         if r_hip[0] != 0 and r_knee[0] != 0 and r_ankle[0] != 0:
                             draw_angle_arc(annotated, r_hip, r_knee, r_ankle, a_knee, (255, 255, 255))
+                        if r_eye[0] != 0 and r_ear[0] != 0 and r_shoulder[0] != 0:
+                            draw_angle_arc(annotated, r_eye, r_ear, r_shoulder, a_chin, (0, 255, 255), radius=40)
 
                     cv2.putText(annotated, f"Elbow: {a_elbow:.1f} deg", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (200, 200, 200), 2)
                     cv2.putText(annotated, f"Knee:  {a_knee:.1f} deg", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (200, 200, 200), 2)
+                    cv2.putText(annotated, f"Chin:  {a_chin:.1f} deg", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
                 elif pose.lower() == "sitting":
                     # TODO: Add custom sitting drawing here
                     pass

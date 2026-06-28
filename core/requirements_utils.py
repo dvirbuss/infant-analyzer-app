@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
+import pkg_resources
+
 
 _VERSION_SPLIT_RE = re.compile(r"\s*(==|>=|<=|~=|!=|>|<)\s*")
 
@@ -53,7 +55,6 @@ def requirement_to_import_name(req_line: str) -> Tuple[str, str]:
 
 
 def find_missing(requirements_file):
-    import pkg_resources
     required = {
         req.project_name.lower(): req
         for req in pkg_resources.parse_requirements(open(requirements_file))

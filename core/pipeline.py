@@ -10,7 +10,7 @@ from core.video_ops import save_first_frame_keypoints  # type: ignore
 from core.pose_infer import infer_video_with_angles  # type: ignore
 from core.helpers import knn_impute_keypoints_tsv  # type: ignore
 from core.aims_scoring import score_all, init_scores  # type: ignore
-from core.reporting import build_reports  # type: ignore
+from core.reporting import build_reports, plot_supine_parameters_table  # type: ignore
 
 
 # --------- lightweight model cache (core-safe, no streamlit import) ---------
@@ -54,6 +54,10 @@ def process_single_video(pose: str, video_path: str, out_dir: Path, frame_callba
 
     # 4) scoring
     scores = score_all(artifacts["keypoints_tsv"], artifacts["angles_tsv"], pose)
+
+    if pose.lower() == "supine" and getattr(scores, "supine_parameters", None) is not None:
+        table_path = out_dir / "Supine_Parameters_Table.jpg"
+        plot_supine_parameters_table(scores.supine_parameters, scores.supine, table_path)
     
     return scores, artifacts
 

@@ -1,11 +1,12 @@
 import os
+from pathlib import Path
 import cv2
+import torch
 from ultralytics import YOLO
 from .helpers import extract_keypoints_xy, normalize_coordinates
 import config
 
 def mirror_video(input_path, output_path):
-    from pathlib import Path
     in_path = Path(input_path)
     out_path = Path(output_path)
     flag = False
@@ -32,11 +33,11 @@ def mirror_video(input_path, output_path):
     out.release()
 
     if flag:
-        import os
         os.remove(str(in_path))
         os.rename(str(out_path), str(in_path))
 
 def save_first_frame_keypoints(model, video_path):
+    device = 0 if torch.cuda.is_available() else "cpu"
     video_path = str(video_path)
     cap = cv2.VideoCapture(video_path)
     
@@ -45,7 +46,7 @@ def save_first_frame_keypoints(model, video_path):
         ret, frame = cap.read()
         if not ret: break
         
-        results = model(frame, verbose=False)
+        results = model(frame, device=device, verbose=False)
         if results and results[0].keypoints is not None:
             kps_xy = extract_keypoints_xy(results[0].keypoints)
             nose = kps_xy[config.CATEGORIES.index("Nose")]

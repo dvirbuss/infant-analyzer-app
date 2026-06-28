@@ -4,13 +4,29 @@ from datetime import datetime
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import os
 import sys
+import tempfile
+import shutil
+from pathlib import Path
+from tqdm import tqdm
+from ultralytics import YOLO
 
 # Ensure the current directory is in sys.path to import local modules
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
+# Add project root to sys.path to import config and core
+project_root = os.path.dirname(os.path.dirname(current_dir))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+import excel_config as conf
 from excel_utils import format_data_sheets, format_analytics_sheet
+import config
+from core.video_ops import save_first_frame_keypoints
+from core.pose_infer import infer_video_with_angles
+from core.helpers import knn_impute_keypoints_tsv
+from core.aims_scoring import score_all
 
 def create_eval_report(tested_videos, model_predictions, gt_file_path="prone_score_GT.xlsx"):
     """
@@ -75,18 +91,24 @@ def create_eval_report(tested_videos, model_predictions, gt_file_path="prone_sco
     # Generate timestamp for filename: dd-mm-yy_HH-MM
     timestamp = datetime.now().strftime("%d-%m-%y_%H-%M")
     
+    # Determine filename prefix based on GT file
+    prefix = "prone"
+    if "supine" in gt_file_path.lower():
+        prefix = "supine"
+    elif "sitting" in gt_file_path.lower():
+        prefix = "sitting"
+    elif "standing" in gt_file_path.lower():
+        prefix = "standing"
+        
     # Save to Exams_score_eval folder
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_dir = os.path.join(script_dir, "Exams_score_eval")
     os.makedirs(output_dir, exist_ok=True)
     
-    output_filename = os.path.join(output_dir, f"prone_eval_{timestamp}.xlsx")
+    output_filename = os.path.join(output_dir, f"{prefix}_eval_{timestamp}.xlsx")
     
     # Save to Excel
     with pd.ExcelWriter(output_filename, engine='openpyxl') as writer:
-        import excel_config as conf
-        from excel_utils import format_data_sheets, format_analytics_sheet
-        
         gt_filtered.to_excel(writer, sheet_name=conf.SHEET_GT, index=False)
         pred_df.to_excel(writer, sheet_name=conf.SHEET_PRED, index=False)
         analytics_df.to_excel(writer, sheet_name=conf.SHEET_ANALYTICS, index=False)
@@ -98,33 +120,24 @@ def create_eval_report(tested_videos, model_predictions, gt_file_path="prone_sco
     print(f"Evaluation report generated successfully: {output_filename}")
     return output_filename
 
-def run_prone_model_for_eval(video_path: str) -> list:
+def run_model_for_eval(video_path: str, pose: str = "Prone") -> list:
     """
-    Runs the prone model on a specific video and returns the scores array.
+    Runs the model on a specific video for a given pose and returns the scores array.
     Uses a temporary directory so artifacts are discarded.
     Uses tqdm to show progress.
     """
-    import tempfile
-    import config
-    from ultralytics import YOLO
-    from tqdm import tqdm
-    from pathlib import Path
-    
-    from core.video_ops import save_first_frame_keypoints
-    from core.pose_infer import infer_video_with_angles
-    from core.helpers import knn_impute_keypoints_tsv
-    from core.aims_scoring import score_all
-    
     if not os.path.exists(video_path):
         raise FileNotFoundError(f"Video not found: {video_path}")
         
-    model = YOLO(config.PRONE_MODEL_PATH)
+    model_path = config.PRONE_MODEL_PATH if pose.lower() == "prone" else config.SUPINE_MODEL_PATH
+    model = YOLO(model_path)
     
-    with tempfile.TemporaryDirectory() as temp_dir:
+    temp_dir = tempfile.mkdtemp()
+    try:
         out_dir = Path(temp_dir)
-        pbar = tqdm(total=100, desc=f"Evaluating {os.path.basename(video_path)}")
+        pbar = tqdm(total=100, desc=f"Evaluating {os.path.basename(video_path)} ({pose})")
         
-        def update_progress(current_frame, total_frames):
+        def update_progress(current_frame, total_frames, pose=pose):
             if total_frames > 0:
                 progress = (current_frame / total_frames) * 100
                 pbar.update(progress - pbar.n)
@@ -133,67 +146,74 @@ def run_prone_model_for_eval(video_path: str) -> list:
         artifacts = infer_video_with_angles(
             model=model, 
             video_path=video_path, 
-            pose="Prone",
+            pose=pose,
             out_dir=out_dir, 
             progress_callback=update_progress
         )
         
         knn_impute_keypoints_tsv(artifacts["keypoints_tsv"])
-        scores = score_all(artifacts["keypoints_tsv"], artifacts["angles_tsv"], "Prone")
+        scores = score_all(artifacts["keypoints_tsv"], artifacts["angles_tsv"], pose)
         
         pbar.close()
-        return scores.prone
+        return getattr(scores, pose.lower())
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
-def cast_array_to_dict(prone_scores_array: list) -> dict:
+def cast_array_to_dict(scores_array: list, pose: str = "Prone") -> dict:
     """
-    Casts the 21-element boolean prone scores array into a dictionary mapping 
-    task names to their evaluation values (0 or 1).
+    Casts the scores array into a dictionary mapping task names to evaluation values (0 or 1).
     """
-    # Initialize the 21 prone task names
-    # Using generic names for tasks beyond the 7 we actively score right now
-    tasks = [f"Prone Task {i+1}" for i in range(21)]
+    if pose.lower() == "prone":
+        tasks = [
+            'Prone Lying 1', 'Prone Lying 2', 'Prone Prop', 'Forearm Support 1', 
+            'Prone Mobility', 'Forearm Support 2', 'Extended Arm Support', 
+            'Rolling Prone to Supine Without Rotation', 'Swimming', 
+            'Reaching from forearm support', 'Pivoting', 
+            'Rolling Prone to Supine with Rotation', 'Four Point Kneeling 1', 
+            'Propped Lying on Side', 'Reciprocal Crawling', 
+            'Four Point Kneeling to Sitting or Half Sitting', 'Reciprocal Creeping 1', 
+            'Reaching from Extended Arm support', 'Four Point Kneeling 2', 
+            'Modified Four Point Kneeling', 'Reciprocal Creeping 2'
+        ]
+    else: # Supine
+        tasks = [
+            'Supine Lying 1', 'Supine Lying 2', 'Supine Lying 3', 'Supine Lying 4', 
+            'Hands to Knees', 'Active Extension', 'Hands to Feet', 
+            'Rolling Supine to Prone Without Rotation', 'Rolling Supine to Prone With Rotation'
+        ]
     
-    # Override with specific names for the tasks we know
-    tasks[0] = "Prone Lying 1"
-    tasks[1] = "Prone Lying 2"
-    tasks[2] = "Prone Prop"
-    tasks[3] = "Forearm Support 1"
-    tasks[4] = "Prone Mobility"
-    tasks[5] = "Forearm Support 2"
-    tasks[6] = "Extended Arm Support"
-    
-    # Cast to int (True -> 1, False -> 0)
-    return {task: int(score) for task, score in zip(tasks, prone_scores_array)}
+    return {task: int(score) for task, score in zip(tasks, scores_array)}
 
 if __name__ == "__main__":
-    tested_videos = [
-        "prone_video_11", 
-        "prone_video_13"
-    ]
-    
-    # Evaluation output can be a dictionary mapping video names to task predictions
-    evaluation_output = {
-    "prone_video_11": {
-        "Prone Lying 1": 1, 
-        "Prone Lying 2": 0, 
-        "Prone Prop": 1,
-        "Forearm Support 1": 1, 
-        "Prone Mobility": 0,
-        "Forearm Support 2": 1,
-        "Extended Arm Support": 0,
-        "Prone to Supine": 1
-    },
-    "prone_video_13": {
-        "Prone Lying 1": 1, 
-        "Prone Lying 2": 1, 
-        "Prone Prop": 0,
-        "Forearm Support 1": 0, 
-        "Prone Mobility": 1,
-        "Forearm Support 2": 0,
-        "Extended Arm Support": 1,
-        "Prone to Supine": 0
+    # Define video sets for Prone and Supine
+    eval_tasks = {
+        "Prone": ["prone_video_11"],
+        "Supine": ["supine_video_20", "supine_video_21"] # Example supine videos
     }
-}
     
-    # Run the function
-    create_eval_report(tested_videos, evaluation_output)
+    base_video_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "videos")
+    
+    for pose, video_list in eval_tasks.items():
+        evaluation_output = {}
+        gt_file = "prone_score_GT.xlsx" if pose == "Prone" else "supine_score_GT.xlsx"
+        
+        for video_name in video_list:
+            video_path = os.path.join(base_video_dir, f"{video_name}.mp4")
+            
+            if not os.path.exists(video_path):
+                print(f"Warning: Could not find {pose} video at {video_path}. Skipping.")
+                continue
+                
+            try:
+                print(f"\nRunning live {pose} evaluation for {video_name}...")
+                scores_array = run_model_for_eval(video_path, pose=pose)
+                evaluation_output[video_name] = cast_array_to_dict(scores_array, pose=pose)
+                print(f"Successfully evaluated {video_name}")
+            except Exception as e:
+                print(f"Error evaluating {video_name}: {e}")
+
+        if evaluation_output:
+            print(f"Generating {pose} evaluation report...")
+            create_eval_report(list(evaluation_output.keys()), evaluation_output, gt_file_path=gt_file)
+        else:
+            print(f"\nNo {pose} evaluations were successfully generated.")

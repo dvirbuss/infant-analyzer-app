@@ -395,6 +395,85 @@ def plot_aims_percentile_bar(
     return save_path
 
 
+def plot_supine_parameters_table(
+    parameters_status: Dict[str, bool],
+    task_status: List[bool],
+    save_path: str | Path,
+) -> Path:
+    """
+    Creates a table image for the 9 Supine tasks:
+    - 9 rows
+    - Parameter values - green if happened (True), red if not (False)
+    - Task names - green if all parameters in their list are True, red if not
+    - Parameters list for each task
+    - Age range for each task as a list [Min, Max]
+    """
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+
+    task_info = [
+        ("1. Supine Lying 1", "[0,2]", []),
+        ("2. Supine Lying 2", "[0,2]", []),
+        ("3. Supine Lying 3", "[2,3]", ["Head in Midline"]),
+        ("4. Supine Lying 4", "[2,4]", ["Head in Midline", "Chin Tuck", "Hands to Chest"]),
+        ("5. Hands to Knees", "[2,5]", ["Head in Midline", "Chin Tuck", "Hands to Knees"]),
+        ("6. Active Extension", "[3,6]", ["Neck Hyperextension", "Leg Extension"]),
+        ("7. Hands to Feet", "[4,6]", ["Head in Midline", "Chin Tuck", "Hands to Feet"]),
+        ("8. Rolling (no rotation)", "[4,9]", ["Rolled Sideways", "No Segmental Rotation"]),
+        ("9. Rolling (with rotation)", "[6,9]", ["Rolled Sideways", "Segmental Rotation"])
+    ]
+
+    fig, ax = plt.subplots(figsize=(10, 6.5), dpi=150)
+    ax.axis("off")
+
+    y_start = 0.95
+    y_step = 0.085
+
+    # Header row
+    ax.text(0.02, y_start, "Task Name", fontweight="bold", fontsize=11, color="#2c3e50")
+    ax.text(0.38, y_start, "Age Range", fontweight="bold", fontsize=11, color="#2c3e50")
+    ax.text(0.55, y_start, "Parameters Checked", fontweight="bold", fontsize=11, color="#2c3e50")
+
+    # Draw a line under header
+    ax.plot([0.02, 0.98], [y_start - 0.02, y_start - 0.02], color="#bdc3c7", linewidth=1.5)
+
+    for i, (name, age, param_keys) in enumerate(task_info):
+        y = y_start - 0.05 - (i * y_step)
+
+        # Task passes if index in task_status is True (or if no parameters are checked, which are baseline)
+        is_passed = task_status[i] if i < len(task_status) else False
+        task_color = "green" if is_passed else "red"
+
+        # Draw task name
+        ax.text(0.02, y, name, fontweight="semibold", fontsize=10, color=task_color)
+
+        # Draw age range
+        ax.text(0.38, y, age, fontsize=10, color="#7f8c8d")
+
+        # Draw parameters list
+        if not param_keys:
+            ax.text(0.55, y, "Baseline (Passed)", fontsize=10, color="green", style="italic")
+        else:
+            x_offset = 0.55
+            for idx, pk in enumerate(param_keys):
+                status = parameters_status.get(pk, False)
+                p_color = "green" if status else "red"
+                text_str = pk
+                if idx < len(param_keys) - 1:
+                    text_str += ", "
+
+                ax.text(x_offset, y, text_str, fontsize=9.5, color=p_color, fontweight="medium")
+                x_offset += len(text_str) * 0.0072
+
+        # Draw separator line
+        ax.plot([0.02, 0.98], [y - 0.025, y - 0.025], color="#ecf0f1", linewidth=0.8)
+
+    plt.tight_layout()
+    fig.savefig(save_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return save_path
+
+
 # ---------- High-level helper used by pipeline ----------
 
 def build_reports(
@@ -452,6 +531,13 @@ def build_reports(
         "expert_plot": str(expert_plot),
         "parent_plot": str(parent_plot),
     }
+
+    # Check if we should plot the supine parameters table
+    supine_params = getattr(scores, "supine_parameters", None)
+    if supine_params is not None:
+        table_img_path = out_dir / "Supine_Parameters_Table.jpg"
+        plot_supine_parameters_table(supine_params, scores.supine, table_img_path)
+        result["supine_table"] = str(table_img_path)
 
     if angles_tsv_path is not None:
         angles_plot = out_dir / "Angles_Graph.jpg"

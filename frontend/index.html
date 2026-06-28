@@ -13,7 +13,7 @@
     <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Rounded" rel="stylesheet">
 
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=5">
 </head>
 
 <body>
@@ -46,10 +46,9 @@
             <section class="videos-section">
                 <div class="section-title-wrap toggle-wrap">
                     <h2 class="section-title">Evaluation Videos</h2>
-                    <span class="badge">3 Required</span>
                 </div>
 
-                <div class="grid-container">
+                <div class="grid-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <!-- Prone Card -->
                     <div class="card video-card" id="card-prone">
                         <div class="card-icon purple"><img src="/assets/infant_prone.png" alt="Prone" /></div>
@@ -84,23 +83,6 @@
                         </div>
                     </div>
 
-                    <!-- Sitting Card -->
-                    <div class="card video-card" id="card-sitting">
-                        <div class="card-icon orange"><img src="/assets/infant_sitting.png" alt="Sitting" /></div>
-                        <h3 class="card-name">Sitting</h3>
-                        <div class="upload-area" onclick="document.getElementById('file-sitting').click()">
-                            <span class="material-icons-rounded upload-icon">cloud_upload</span>
-                            <p>Upload Video</p>
-                        </div>
-                        <input type="file" id="file-sitting" accept="video/mp4,video/quicktime" hidden
-                            onchange="handleFileSelect(event, 'sitting')" />
-                        <div class="preview-area" id="preview-sitting" style="display: none;">
-                            <video id="vid-sitting" controls></video>
-                            <button class="clear-btn" onclick="clearFile('sitting')"><span
-                                    class="material-icons-rounded">close</span></button>
-                        </div>
-                    </div>
-
                 </div>
             </section>
 
@@ -120,6 +102,10 @@
                 </div>
 
                 <div class="reports-grid">
+                    <div class="card report-card" id="supine-table-card" style="display: none;">
+                        <h3>Supine Parameters Table</h3>
+                        <img id="supine-table-img" src="" alt="Supine Parameters Table" />
+                    </div>
                     <div class="card report-card">
                         <h3>Expert Report</h3>
                         <img id="expert-img" src="" alt="Expert Report" />
@@ -142,35 +128,22 @@
                     <div class="circular-progress" id="circle-Prone">
                         <div class="value-container" id="val-Prone">0%</div>
                     </div>
-                    <div class="step-label">Prone 1/3</div>
+                    <div class="step-label">Prone 1/2</div>
                     <div class="linear-progress-wrapper">
                         <div class="linear-progress" id="linear-Prone"></div>
                     </div>
                 </div>
                 
-                <div class="progress-arrow"><span class="material-icons-rounded">arrow_forward</span></div>
+                <div class="progress-arrow" id="prog-arrow"><span class="material-icons-rounded">arrow_forward</span></div>
                 
                 <!-- Supine Progress -->
                 <div class="progress-step inactive" id="step-Supine">
                     <div class="circular-progress" id="circle-Supine">
                         <div class="value-container" id="val-Supine">0%</div>
                     </div>
-                    <div class="step-label">Supine 2/3</div>
+                    <div class="step-label">Supine 2/2</div>
                     <div class="linear-progress-wrapper">
                         <div class="linear-progress" id="linear-Supine"></div>
-                    </div>
-                </div>
-                
-                <div class="progress-arrow"><span class="material-icons-rounded">arrow_forward</span></div>
-                
-                <!-- Sitting Progress -->
-                <div class="progress-step inactive" id="step-Sitting">
-                    <div class="circular-progress" id="circle-Sitting">
-                        <div class="value-container" id="val-Sitting">0%</div>
-                    </div>
-                    <div class="step-label">Sitting 3/3</div>
-                    <div class="linear-progress-wrapper">
-                        <div class="linear-progress" id="linear-Sitting"></div>
                     </div>
                 </div>
             </div>
@@ -178,7 +151,7 @@
 
     </div>
 
-    <script src="app.js?v=2"></script>
+    <script src="app.js?v=5"></script>
 </body>
 
 </html>

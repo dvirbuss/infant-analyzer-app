@@ -2,6 +2,8 @@ from pathlib import Path
 import csv
 import cv2
 import numpy as np
+import torch
+from tqdm import tqdm  # type: ignore
 import config
 from .helpers import extract_keypoints_xy, normalize_coordinates, calculate_angle, draw_angle_arc
 
@@ -33,7 +35,11 @@ def infer_video_with_angles(model, video_path: str, pose: str, out_dir: Path, fr
         ang_writer.writerow(["Frame", "Time", "R_Eye-Ear-Vertical", "R_Wrist-Elbow-Shoulder", "R_Hip-Knee-Ankle", "R_Chin_Angle"])
 
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        from tqdm import tqdm  # type: ignore
+        device = 0 if torch.cuda.is_available() else "cpu"
+
+        step = 3 if pose.lower() == "supine" else 1
+        last_results = None
+        last_kps_xy = [[0,0]] * len(config.CATEGORIES)
 
         with tqdm(total=total_frames, desc=f"Inferring {name}") as pbar:
             while True:
@@ -48,11 +54,18 @@ def infer_video_with_angles(model, video_path: str, pose: str, out_dir: Path, fr
                 if progress_callback is not None:
                     progress_callback(frame_number, total_frames, pose)
     
-                results = model(frame, verbose=False)
-                if results and results[0].keypoints is not None:
-                    kps_xy = extract_keypoints_xy(results[0].keypoints)
+                if frame_number == 1 or (frame_number - 1) % step == 0:
+                    results = model(frame, device=device, verbose=False)
+                    last_results = results
+                    if results and results[0].keypoints is not None:
+                        kps_xy = extract_keypoints_xy(results[0].keypoints)
+                        last_kps_xy = kps_xy
+                    else:
+                        kps_xy = [[0,0]] * len(config.CATEGORIES)
+                        last_kps_xy = kps_xy
                 else:
-                    kps_xy = [[0,0]] * len(config.CATEGORIES)
+                    results = last_results
+                    kps_xy = last_kps_xy
     
                 normalized = [normalize_coordinates(x, y, fw, fh) for x, y in kps_xy]
                 flat = [v for xy in normalized for v in xy]

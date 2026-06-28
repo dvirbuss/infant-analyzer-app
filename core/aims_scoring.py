@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from typing import List, Dict
 import pandas as pd
@@ -172,7 +173,6 @@ def score_all(keypoints_tsv_path: str, angles_tsv_path: str, pose: str = "Prone"
     scores = init_scores()
 
     try:
-        import os
         if not os.path.exists(keypoints_tsv_path) or not os.path.exists(angles_tsv_path):
             return scores
             

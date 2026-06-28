@@ -1,13 +1,14 @@
 import datetime
-import streamlit as st
+import traceback
 from pathlib import Path
+import streamlit as st
 
 # Internal imports
 import config
 from ui.styles import base_css, generate_button_css
 from ui.components.pose_card import render_pose_card, PoseSpec
 from ui.utils_upload import save_video_bytes
-from core.pipeline import run as run_pipeline
+from core.pipeline import run as run_pipeline, process_full_exam
 
 
 def render_app():
@@ -77,7 +78,6 @@ def render_app():
                 out_dir = config.VIDEOS_OUTPUT_DIR / f"Exam_{stamp}_streamlit"
                 
                 # Run unified pipeline
-                from core.pipeline import process_full_exam
                 result = process_full_exam(video_paths, birth_date, out_dir, caller="streamlit")
                 
                 progress_text.success(f"Analysis complete! Infant Score: {result['aims_score']}")
@@ -94,7 +94,6 @@ def render_app():
                         st.image(reports["parent_plot"], caption="Parent Report", use_column_width=True)
                         
             except Exception as e:
-                import traceback
                 st.error(f"Error during analysis: {e}")
                 st.code(traceback.format_exc())
     # --- 4. DEBUG SECTION (See where it's looking) ---

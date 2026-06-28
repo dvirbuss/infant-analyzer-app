@@ -1,7 +1,6 @@
 const uploadedFiles = {
     prone: null,
-    supine: null,
-    sitting: null
+    supine: null
 };
 
 // Set default date to today minus 60 days
@@ -47,8 +46,8 @@ function clearFile(pose) {
 }
 
 function checkGenerateButton() {
-    // Enable button if ALL required files are present
-    const isReady = uploadedFiles.prone && uploadedFiles.supine && uploadedFiles.sitting;
+    // Enable button if AT LEAST ONE required file is present
+    const isReady = uploadedFiles.prone || uploadedFiles.supine;
     document.getElementById('generate-btn').disabled = !isReady;
 }
 
@@ -61,8 +60,8 @@ async function pollProgress() {
         if (data.status === 'processing' && data.pose !== 'None') {
             const percent = Math.min((data.frame / data.total_frames) * 100, 100);
             
-            const poses = ['Prone', 'Supine', 'Sitting'];
-            const activeIndex = data.pose_index - 1; // 0, 1, or 2
+            const poses = ['Prone', 'Supine'];
+            const activeIndex = data.pose_index - 1; // 0 or 1
             
             // Update the active one
             if (activeIndex >= 0 && activeIndex < 3) {
@@ -95,22 +94,53 @@ async function generateReport() {
 
     const formData = new FormData();
     formData.append("birth_date", dateVal);
-    formData.append("prone", uploadedFiles.prone);
-    formData.append("supine", uploadedFiles.supine);
-    formData.append("sitting", uploadedFiles.sitting);
+    if (uploadedFiles.prone) {
+        formData.append("prone", uploadedFiles.prone);
+    }
+    if (uploadedFiles.supine) {
+        formData.append("supine", uploadedFiles.supine);
+    }
 
     // Show Loading
     document.getElementById('loading-overlay').style.display = 'flex';
     document.getElementById('results-section').style.display = 'none';
 
-    // Reset Progress UI
-    ['Prone', 'Supine', 'Sitting'].forEach(pose => {
+    // Reset and configure Progress UI based on which videos are present
+    const stepProne = document.getElementById('step-Prone');
+    const stepSupine = document.getElementById('step-Supine');
+    const progArrow = document.getElementById('prog-arrow');
+
+    // Reset styles
+    ['Prone', 'Supine'].forEach(pose => {
         document.getElementById(`step-${pose}`).className = 'progress-step inactive';
         document.getElementById(`circle-${pose}`).style.background = `conic-gradient(var(--primary-color) 0deg, #E2E8F0 0deg)`;
         document.getElementById(`val-${pose}`).innerText = '0%';
         document.getElementById(`linear-${pose}`).style.width = '0%';
     });
-    document.getElementById('step-Prone').className = 'progress-step'; // Active first
+
+    if (uploadedFiles.prone && uploadedFiles.supine) {
+        stepProne.style.display = 'flex';
+        stepSupine.style.display = 'flex';
+        progArrow.style.display = 'block';
+        
+        stepProne.querySelector('.step-label').innerText = 'Prone 1/2';
+        stepSupine.querySelector('.step-label').innerText = 'Supine 2/2';
+        stepProne.className = 'progress-step'; // First active
+    } else if (uploadedFiles.prone) {
+        stepProne.style.display = 'flex';
+        stepSupine.style.display = 'none';
+        progArrow.style.display = 'none';
+        
+        stepProne.querySelector('.step-label').innerText = 'Prone';
+        stepProne.className = 'progress-step'; // Active
+    } else if (uploadedFiles.supine) {
+        stepProne.style.display = 'none';
+        stepSupine.style.display = 'flex';
+        progArrow.style.display = 'none';
+        
+        stepSupine.querySelector('.step-label').innerText = 'Supine';
+        stepSupine.className = 'progress-step'; // Active
+    }
     
     // Start Polling
     progressInterval = setInterval(pollProgress, 300);
@@ -141,6 +171,12 @@ async function generateReport() {
         if (data.reports.parent_plot_url) {
             document.getElementById('parent-img').src = data.reports.parent_plot_url;
         }
+        if (data.reports.supine_table_url) {
+            document.getElementById('supine-table-img').src = data.reports.supine_table_url;
+            document.getElementById('supine-table-card').style.display = 'block';
+        } else {
+            document.getElementById('supine-table-card').style.display = 'none';
+        }
         
         // Scroll to results
         document.getElementById('results-section').scrollIntoView({behavior: 'smooth'});
@@ -155,7 +191,7 @@ async function generateReport() {
         
         // Mark all as completed visually just in case
         if (document.getElementById('loading-overlay').style.display === 'none') {
-            ['Prone', 'Supine', 'Sitting'].forEach(pose => {
+            ['Prone', 'Supine'].forEach(pose => {
                 document.getElementById(`step-${pose}`).className = 'progress-step completed';
             });
         }

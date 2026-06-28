@@ -1,5 +1,11 @@
 import openpyxl
 from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
+from openpyxl.chart import PieChart, Reference
+from openpyxl.chart.series import Series, DataPoint
+from openpyxl.chart.data_source import NumRef, NumDataSource, AxDataSource, StrData, StrVal
+from openpyxl.chart.label import DataLabelList
+from openpyxl.utils import get_column_letter
+import pandas as pd
 from sklearn.metrics import confusion_matrix
 import excel_config as conf
 
@@ -45,8 +51,6 @@ def format_data_sheets(writer, sheet_names):
             for cell in worksheet[1]:
                 cell.fill = grey_fill
 
-from openpyxl.chart import PieChart, Reference
-from openpyxl.utils import get_column_letter
 
 def format_analytics_sheet(writer, sheet_name, gt_df, pred_df):
     """
@@ -109,7 +113,6 @@ def format_analytics_sheet(writer, sheet_name, gt_df, pred_df):
     apply_headline_format(worksheet, conf.PRED_CONF_MAT)
 
     # Calculate actual values in Python for the chart cache
-    import pandas as pd
     task_columns = [c for c in gt_df.columns if c != 'video_name']
     gt_values = gt_df[task_columns].values.flatten()
     pred_values = pred_df[task_columns].values.flatten()
@@ -123,10 +126,6 @@ def format_analytics_sheet(writer, sheet_name, gt_df, pred_df):
         tn_val, fp_val, fn_val, tp_val = 0, 0, 0, 0
 
     # Add Pie Chart using explicit UNION references per the user's working formula
-    from openpyxl.chart.series import Series, DataPoint
-    from openpyxl.chart.data_source import NumRef, NumDataSource, AxDataSource, StrData, StrVal
-    from openpyxl.chart.label import DataLabelList
-
     pie = PieChart()
     pie.title = 'Confusion Matrix Breakdown'
 
